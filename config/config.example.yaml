@@ -1,0 +1,32 @@
+sillytavern:
+  apiUrl: http://127.0.0.1:8000
+  apiKey: ""
+  basicAuth:
+    enabled: false
+    username: ""
+    password: ""
+  characterId: ""
+  apiMode: chat
+napcat:
+  wsUrl: ws://127.0.0.1:3001
+  accessToken: ""
+reply:
+  triggerPrefixes:
+    - "#chat"
+    - "@bot"
+  requireAtInGroup: true
+  botQQ: ""
+  replyDelay: 500
+  maxReplyDelay: 3000
+  delayPerChar: 50
+accessControl:
+  blacklist: []
+  whitelist: []
+  groupBlacklist: []
+  groupWhitelist: []
+webui:
+  port: 3031
+  enabled: true
+logging:
+  level: info
+  maxLogEntries: 500

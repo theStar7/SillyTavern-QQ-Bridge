@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SillyTavern-QQ-Bridge 控制面板 - SillyTavern 与 NapCat (QQ) 消息桥接中间件">
+    <title>SillyTavern-QQ-Bridge | 控制面板</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- 侧边导航 -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🌉</span>
+                    <span class="logo-text">SillyTavern Bridge</span>
+                </div>
+                <span class="version-badge">v1.0.0</span>
+            </div>
+
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">仪表盘</span>
+                </li>
+                <li class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">配置管理</span>
+                </li>
+                <li class="nav-item" data-page="logs">
+                    <span class="nav-icon">📜</span>
+                    <span class="nav-label">实时日志</span>
+                </li>
+                <li class="nav-item" data-page="guide">
+                    <span class="nav-icon">📖</span>
+                    <span class="nav-label">使用指南</span>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="connection-status">
+                    <div class="status-item">
+                        <span class="status-dot" id="st-status-dot"></span>
+                        <span>SillyTavern</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-dot" id="nc-status-dot"></span>
+                        <span>NapCat</span>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 仪表盘页面 -->
+            <section class="page active" id="page-dashboard">
+                <header class="page-header">
+                    <h1>仪表盘</h1>
+                    <p class="page-subtitle">实时监控桥接服务状态</p>
+                </header>
+
+                <div class="dashboard-grid">
+                    <!-- 服务状态卡片 -->
+                    <div class="card status-card">
+                        <div class="card-header">
+                            <h3>🔌 服务状态</h3>
+                            <div class="service-toggle">
+                                <button class="btn btn-success" id="btn-start-service">启动服务</button>
+                                <button class="btn btn-danger" id="btn-stop-service">停止服务</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="status-grid">
+                                <div class="status-box">
+                                    <div class="status-indicator" id="bridge-status">
+                                        <span class="status-icon">⏸️</span>
+                                        <span class="status-text">已停止</span>
+                                    </div>
+                                    <span class="status-label">桥接服务</span>
+                                </div>
+                                <div class="status-box">
+                                    <div class="status-indicator" id="st-status">
+                                        <span class="status-icon">❓</span>
+                                        <span class="status-text">未知</span>
+                                    </div>
+                                    <span class="status-label">SillyTavern</span>
+                                </div>
+                                <div class="status-box">
+                                    <div class="status-indicator" id="nc-status">
+                                        <span class="status-icon">❓</span>
+                                        <span class="status-text">未知</span>
+                                    </div>
+                                    <span class="status-label">NapCat</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 统计数据卡片 -->
+                    <div class="card stats-card">
+                        <div class="card-header">
+                            <h3>📈 运行统计</h3>
+                            <button class="btn btn-secondary btn-sm" id="btn-reset-stats">重置</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <span class="stat-value" id="stat-received">0</span>
+                                    <span class="stat-label">收到消息</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="stat-processed">0</span>
+                                    <span class="stat-label">已处理</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="stat-replies">0</span>
+                                    <span class="stat-label">发送回复</span>
+                                </div>
+                                <div class="stat-item stat-error">
+                                    <span class="stat-value" id="stat-errors">0</span>
+                                    <span class="stat-label">错误数</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 快速操作卡片 -->
+                    <div class="card actions-card">
+                        <div class="card-header">
+                            <h3>⚡ 快速操作</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="action-buttons">
+                                <button class="btn btn-primary" id="btn-test-st">
+                                    <span class="btn-icon">🧪</span>
+                                    测试酒馆连接
+                                </button>
+                                <button class="btn btn-primary" id="btn-test-nc">
+                                    <span class="btn-icon">🧪</span>
+                                    测试 NapCat 连接
+                                </button>
+                                <button class="btn btn-warning" id="btn-clear-history">
+                                    <span class="btn-icon">🗑️</span>
+                                    清除对话历史
+                                </button>
+                                <button class="btn btn-secondary" id="btn-clear-logs">
+                                    <span class="btn-icon">📝</span>
+                                    清空日志
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 角色和聊天管理卡片 -->
+                    <div class="card character-card">
+                        <div class="card-header">
+                            <h3>🎭 角色与聊天管理</h3>
+                            <button class="btn btn-secondary btn-sm" id="btn-refresh-chars">刷新</button>
+                        </div>
+                        <div class="card-body">
+                            <!-- 当前状态 -->
+                            <div class="current-info">
+                                <div class="current-character">
+                                    <span class="info-label">当前角色：</span>
+                                    <span class="info-value" id="current-char-name">未知</span>
+                                </div>
+                                <div class="current-messages">
+                                    <span class="info-label">消息数量：</span>
+                                    <span class="info-value" id="current-msg-count">0</span>
+                                </div>
+                            </div>
+
+                            <!-- 角色选择 -->
+                            <div class="form-group">
+                                <label for="character-select">选择角色</label>
+                                <div class="select-with-btn">
+                                    <select id="character-select" class="form-input">
+                                        <option value="">-- 点击刷新获取角色 --</option>
+                                    </select>
+                                    <button class="btn btn-primary btn-sm" id="btn-select-char">切换</button>
+                                </div>
+                            </div>
+
+                            <!-- 聊天选择 -->
+                            <div class="form-group">
+                                <label for="chat-select">选择聊天</label>
+                                <div class="select-with-btn">
+                                    <select id="chat-select" class="form-input">
+                                        <option value="">-- 选择角色后获取聊天 --</option>
+                                    </select>
+                                    <button class="btn btn-primary btn-sm" id="btn-select-chat">切换</button>
+                                </div>
+                            </div>
+
+                            <!-- 新聊天按钮 -->
+                            <div class="action-buttons" style="margin-top: 1rem;">
+                                <button class="btn btn-success" id="btn-new-chat">
+                                    <span class="btn-icon">✨</span>
+                                    开始新聊天
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API 设置管理卡片 -->
+                    <div class="card api-settings-card">
+                        <div class="card-header">
+                            <h3>🔌 API 设置</h3>
+                            <button class="btn btn-secondary btn-sm" id="btn-refresh-api">刷新</button>
+                        </div>
+                        <div class="card-body">
+                            <!-- 当前 API 信息 -->
+                            <div class="current-info">
+                                <div class="current-api">
+                                    <span class="info-label">当前 API：</span>
+                                    <span class="info-value" id="current-api-name">未知</span>
+                                </div>
+                                <div class="current-model">
+                                    <span class="info-label">模型：</span>
+                                    <span class="info-value" id="current-model-name">未知</span>
+                                </div>
+                            </div>
+
+                            <!-- 连接配置文件选择 -->
+                            <div class="form-group">
+                                <label for="profile-select">连接配置文件</label>
+                                <div class="select-with-btn">
+                                    <select id="profile-select" class="form-input">
+                                        <option value="">-- 点击刷新获取配置文件 --</option>
+                                    </select>
+                                    <button class="btn btn-primary btn-sm" id="btn-select-profile">切换</button>
+                                </div>
+                            </div>
+
+                            <!-- API 设置表单 -->
+                            <div class="form-subsection">
+                                <h4>快速设置</h4>
+                                <div class="form-group">
+                                    <label for="api-url-input">API URL</label>
+                                    <input type="url" id="api-url-input" class="form-input"
+                                        placeholder="https://api.example.com/v1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="api-key-input">API Key</label>
+                                    <input type="password" id="api-key-input" class="form-input" placeholder="sk-...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="model-id-input">模型 ID</label>
+                                    <input type="text" id="model-id-input" class="form-input"
+                                        placeholder="gpt-4, claude-3, etc.">
+                                </div>
+                                <div class="action-buttons api-test-buttons" style="margin-top: 1rem;">
+                                    <button class="btn btn-primary" id="btn-apply-api">
+                                        <span class="btn-icon">💾</span>
+                                        应用设置
+                                    </button>
+                                    <button class="btn btn-secondary" id="btn-test-connection">
+                                        <span class="btn-icon">🔗</span>
+                                        测试连接
+                                    </button>
+                                    <button class="btn btn-success" id="btn-test-message">
+                                        <span class="btn-icon">📨</span>
+                                        发送测试消息
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 最近日志卡片 -->
+                    <div class="card logs-preview-card">
+                        <div class="card-header">
+                            <h3>📋 最近日志</h3>
+                            <a href="#" class="link-more" data-goto="logs">查看全部 →</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="logs-preview" id="logs-preview">
+                                <div class="log-empty">暂无日志</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 配置管理页面 -->
+            <section class="page" id="page-settings">
+                <header class="page-header">
+                    <h1>配置管理</h1>
+                    <p class="page-subtitle">修改桥接服务配置</p>
+                </header>
+
+                <form id="config-form" class="config-form">
+                    <!-- SillyTavern 设置 -->
+                    <div class="card config-section">
+                        <div class="card-header">
+                            <h3>🍺 SillyTavern 酒馆设置</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="st-api-url">API 地址</label>
+                                    <input type="url" id="st-api-url" name="sillytavern.apiUrl"
+                                        placeholder="http://127.0.0.1:8000" class="form-input">
+                                    <span class="form-hint">SillyTavern 的 API 基础地址</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="st-api-key">API Key (可选)</label>
+                                    <input type="password" id="st-api-key" name="sillytavern.apiKey"
+                                        placeholder="留空则不使用" class="form-input">
+                                    <span class="form-hint">如果酒馆启用了 API Key 验证</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="st-character">角色卡 ID (可选)</label>
+                                    <input type="text" id="st-character" name="sillytavern.characterId"
+                                        placeholder="角色卡名称或 ID" class="form-input">
+                                </div>
+                            </div>
+
+                            <div class="form-subsection">
+                                <h4>Basic Auth 认证</h4>
+                                <div class="form-grid">
+                                    <div class="form-group form-group-checkbox">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="st-basic-auth-enabled"
+                                                name="sillytavern.basicAuth.enabled">
+                                            <span class="checkbox-custom"></span>
+                                            启用 Basic Auth
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="st-basic-auth-username">用户名</label>
+                                        <input type="text" id="st-basic-auth-username"
+                                            name="sillytavern.basicAuth.username" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="st-basic-auth-password">密码</label>
+                                        <input type="password" id="st-basic-auth-password"
+                                            name="sillytavern.basicAuth.password" class="form-input">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NapCat 设置 -->
+                    <div class="card config-section">
+                        <div class="card-header">
+                            <h3>🐱 NapCat (OneBot 11) 设置</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="nc-ws-url">WebSocket 地址</label>
+                                    <input type="url" id="nc-ws-url" name="napcat.wsUrl"
+                                        placeholder="ws://127.0.0.1:3001" class="form-input">
+                                    <span class="form-hint">NapCat 的反向 WebSocket 地址</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="nc-access-token">Access Token (可选)</label>
+                                    <input type="password" id="nc-access-token" name="napcat.accessToken"
+                                        placeholder="留空则不使用" class="form-input">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 回复设置 -->
+                    <div class="card config-section">
+                        <div class="card-header">
+                            <h3>💬 回复设置</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="reply-prefixes">触发前缀</label>
+                                    <input type="text" id="reply-prefixes" name="reply.triggerPrefixes"
+                                        placeholder="#chat, @bot" class="form-input">
+                                    <span class="form-hint">多个前缀用逗号分隔</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reply-bot-qq">机器人 QQ 号</label>
+                                    <input type="text" id="reply-bot-qq" name="reply.botQQ" placeholder="用于检测 @ 消息"
+                                        class="form-input">
+                                </div>
+                                <div class="form-group form-group-checkbox">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="reply-require-at" name="reply.requireAtInGroup"
+                                            checked>
+                                        <span class="checkbox-custom"></span>
+                                        群聊中需要 @ 机器人才响应
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="form-subsection">
+                                <h4>回复延迟（模拟打字效果）</h4>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="reply-delay">基础延迟 (ms)</label>
+                                        <input type="number" id="reply-delay" name="reply.replyDelay" value="500"
+                                            min="0" max="10000" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="reply-max-delay">最大延迟 (ms)</label>
+                                        <input type="number" id="reply-max-delay" name="reply.maxReplyDelay"
+                                            value="3000" min="0" max="30000" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="reply-delay-per-char">每字符延迟 (ms)</label>
+                                        <input type="number" id="reply-delay-per-char" name="reply.delayPerChar"
+                                            value="50" min="0" max="500" class="form-input">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 访问控制 -->
+                    <div class="card config-section">
+                        <div class="card-header">
+                            <h3>🔒 访问控制</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="ac-blacklist">用户黑名单</label>
+                                    <textarea id="ac-blacklist" name="accessControl.blacklist" placeholder="每行一个 QQ 号"
+                                        class="form-textarea" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ac-whitelist">用户白名单</label>
+                                    <textarea id="ac-whitelist" name="accessControl.whitelist"
+                                        placeholder="留空则不启用白名单，每行一个 QQ 号" class="form-textarea" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ac-group-blacklist">群黑名单</label>
+                                    <textarea id="ac-group-blacklist" name="accessControl.groupBlacklist"
+                                        placeholder="每行一个群号" class="form-textarea" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ac-group-whitelist">群白名单</label>
+                                    <textarea id="ac-group-whitelist" name="accessControl.groupWhitelist"
+                                        placeholder="留空则不启用白名单，每行一个群号" class="form-textarea" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 保存按钮 -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <span class="btn-icon">💾</span>
+                            保存配置
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-lg" id="btn-reload-config">
+                            <span class="btn-icon">🔄</span>
+                            重新加载
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 实时日志页面 -->
+            <section class="page" id="page-logs">
+                <header class="page-header">
+                    <h1>实时日志</h1>
+                    <p class="page-subtitle">查看桥接服务运行日志</p>
+                </header>
+
+                <div class="card logs-card">
+                    <div class="card-header">
+                        <div class="logs-controls">
+                            <div class="log-filters">
+                                <button class="btn btn-filter active" data-level="all">全部</button>
+                                <button class="btn btn-filter" data-level="info">信息</button>
+                                <button class="btn btn-filter" data-level="warn">警告</button>
+                                <button class="btn btn-filter" data-level="error">错误</button>
+                            </div>
+                            <div class="log-actions">
+                                <label class="checkbox-label checkbox-inline">
+                                    <input type="checkbox" id="log-auto-scroll" checked>
+                                    <span class="checkbox-custom"></span>
+                                    自动滚动
+                                </label>
+                                <button class="btn btn-secondary btn-sm" id="btn-clear-log-display">清空显示</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body logs-body">
+                        <div class="logs-container" id="logs-container">
+                            <div class="log-empty">等待日志...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 使用指南页面 -->
+            <section class="page" id="page-guide">
+                <header class="page-header">
+                    <h1>使用指南</h1>
+                    <p class="page-subtitle">配置说明与帮助文档</p>
+                </header>
+
+                <div class="guide-content">
+                    <div class="card guide-card">
+                        <div class="card-header">
+                            <h3>🚀 快速开始</h3>
+                        </div>
+                        <div class="card-body">
+                            <ol class="guide-steps">
+                                <li>
+                                    <strong>配置 SillyTavern</strong>
+                                    <p>确保酒馆允许外部连接（见下方详细说明）</p>
+                                </li>
+                                <li>
+                                    <strong>配置 NapCat</strong>
+                                    <p>启动 NapCat 并开启反向 WebSocket 服务</p>
+                                </li>
+                                <li>
+                                    <strong>填写本桥接配置</strong>
+                                    <p>在"配置管理"页面填入正确的地址和参数</p>
+                                </li>
+                                <li>
+                                    <strong>启动服务</strong>
+                                    <p>点击仪表盘上的"启动服务"按钮</p>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="card guide-card important">
+                        <div class="card-header">
+                            <h3>⚠️ SillyTavern 配置说明（必读）</h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="guide-intro">
+                                要让本桥接程序能够连接 SillyTavern，您需要修改酒馆的 <code>config.yaml</code> 配置文件。
+                                该文件位于 SillyTavern 根目录下。
+                            </p>
+
+                            <div class="config-example">
+                                <h4>1. 启用远程连接监听</h4>
+                                <pre><code># 允许监听来自其他设备/程序的连接
+listen: true</code></pre>
+                            </div>
+
+                            <div class="config-example">
+                                <h4>2. 配置 IP 白名单</h4>
+                                <p>将本桥接程序的 IP 加入白名单。如果在本机运行，使用 <code>127.0.0.1</code>：</p>
+                                <pre><code>whitelist:
+  - ::1
+  - 127.0.0.1</code></pre>
+
+                                <div class="warning-box">
+                                    <strong>⚠️ 安全提示：</strong>
+                                    如果您需要快速测试，可以暂时设置为 <code>0.0.0.0/0</code> 允许所有连接。
+                                    <strong>但请注意这存在安全风险，测试完成后请恢复为具体 IP。</strong>
+                                    <pre><code># 仅用于测试，存在安全风险！
+whitelist:
+  - 0.0.0.0/0</code></pre>
+                                </div>
+                            </div>
+
+                            <div class="config-example">
+                                <h4>3. Basic Auth 认证（可选）</h4>
+                                <p>如果您在酒馆启用了 Basic Auth，需要在本桥接的配置中填入相同的用户名和密码：</p>
+                                <pre><code># SillyTavern 的 config.yaml 中的设置
+basicAuthMode: true
+basicAuthUser:
+  username: "YourUsername"
+  password: "YourPassword"</code></pre>
+                            </div>
+
+                            <div class="tip-box">
+                                <strong>💡 提示：</strong>
+                                修改 <code>config.yaml</code> 后需要重启 SillyTavern 才能生效。
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card guide-card">
+                        <div class="card-header">
+                            <h3>🐱 NapCat 配置说明</h3>
+                        </div>
+                        <div class="card-body">
+                            <p>确保 NapCat 的反向 WebSocket 服务已启动，默认地址为 <code>ws://127.0.0.1:3001</code>。</p>
+
+                            <div class="config-example">
+                                <h4>NapCat 配置示例</h4>
+                                <pre><code>{
+  "ws_reverse": {
+    "enable": true,
+    "url": "ws://127.0.0.1:3001"
+  }
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card guide-card">
+                        <div class="card-header">
+                            <h3>💬 触发方式说明</h3>
+                        </div>
+                        <div class="card-body">
+                            <table class="guide-table">
+                                <thead>
+                                    <tr>
+                                        <th>场景</th>
+                                        <th>触发条件</th>
+                                        <th>示例</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>私聊</td>
+                                        <td>任何消息（或带前缀）</td>
+                                        <td>直接发送消息即可</td>
+                                    </tr>
+                                    <tr>
+                                        <td>群聊（需要 @）</td>
+                                        <td>@ 机器人</td>
+                                        <td><code>@机器人 你好</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>群聊（命令前缀）</td>
+                                        <td>以配置的前缀开头</td>
+                                        <td><code>#chat 你好</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast 通知容器 -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- 加载脚本 -->
+    <script src="js/app.js"></script>
+</body>
+
+</html>
