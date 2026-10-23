@@ -23,6 +23,7 @@ class NapCatClient {
      * 连接到 NapCat
      */
     connect() {
+        if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
         const config = configManager.get('napcat');
         const wsUrl = config.wsUrl;
 
@@ -41,9 +42,11 @@ class NapCatClient {
                 url = `${url}${separator}access_token=${config.accessToken}`;
             }
 
-            this.ws = new WebSocket(url);
+            const ws = new WebSocket(url);
+            this.ws = ws;
 
-            this.ws.on('open', () => {
+            ws.on('open', () => {
+                if (this.ws !== ws) return;
                 this.connected = true;
                 this.lastError = null;
                 logger.info('NapCat', 'WebSocket 连接成功');
@@ -58,17 +61,20 @@ class NapCatClient {
                 }
             });
 
-            this.ws.on('message', (data) => {
+            ws.on('message', (data) => {
+                if (this.ws !== ws) return;
                 this.handleMessage(data);
             });
 
-            this.ws.on('close', (code, reason) => {
+            ws.on('close', (code, reason) => {
+                if (this.ws !== ws) return;
                 this.connected = false;
                 logger.warn('NapCat', `WebSocket 连接断开: ${code} - ${reason}`);
                 this.scheduleReconnect();
             });
 
-            this.ws.on('error', (error) => {
+            ws.on('error', (error) => {
+                if (this.ws !== ws) return;
                 this.connected = false;
                 this.lastError = error.message;
                 logger.error('NapCat', `WebSocket 错误: ${error.message}`);
@@ -107,8 +113,9 @@ class NapCatClient {
         }
 
         if (this.ws) {
-            this.ws.close();
+            const ws = this.ws;
             this.ws = null;
+            ws.close();
         }
 
         this.connected = false;

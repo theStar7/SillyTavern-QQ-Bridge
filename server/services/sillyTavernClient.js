@@ -290,9 +290,11 @@ class SillyTavernClient {
         };
     }
 
-    clearHistory(userId) {
-        logger.info('SillyTavern', '清除历史请求');
-        return true;
+    async clearHistory(userId) {
+        if (userId) {
+            return { success: false, error: '当前为共享会话，无法按用户重置历史' };
+        }
+        return this.startNewChat();
     }
 
     clearAllHistory() {
@@ -550,67 +552,68 @@ class SillyTavernClient {
      * 开始新聊天
      */
     async startNewChat() {
+        if (this.isProcessing || this.messageQueue.length) {
+            return { success: false, error: '正在处理消息，请稍后再开始新聊天' };
+        }
+        this.isProcessing = true;
         try {
             if (!this.initialized) await this.initialize();
+            const previousChat = await this.page.evaluate(() =>
+                window.SillyTavern?.getContext?.().chatId || document.getElementById('selected_chat_pole')?.value);
+            if (!previousChat) return { success: false, error: '请先选择角色或群聊' };
 
-            logger.info('SillyTavern', '开始新聊天...');
-
-            const result = await this.page.evaluate(async () => {
-                // 辅助函数：等待元素可见
-                const waitForVisible = async (id, timeout = 3000) => {
-                    const start = Date.now();
-                    while (Date.now() - start < timeout) {
-                        const el = document.getElementById(id);
-                        if (el && el.offsetParent !== null) return el;
-                        await new Promise(r => setTimeout(r, 100));
-                    }
-                    return null;
-                };
-
-                // 1. 点击汉堡菜单打开选项
-                const menuBtn = document.getElementById('options_button');
-                if (menuBtn) {
-                    menuBtn.click();
-                }
-
-                // 2. 等待新聊天按钮变为可见
-                const newChatBtn = await waitForVisible('option_start_new_chat', 3000);
-                if (newChatBtn) {
-                    newChatBtn.click();
-                    return { success: true };
-                }
-
-                // 3. 如果还是找不到，尝试再点击一次菜单按钮（可能已经关闭了）
-                if (menuBtn) {
-                    menuBtn.click();
-                    await new Promise(r => setTimeout(r, 1000));
-                    const retryBtn = document.getElementById('option_start_new_chat');
-                    if (retryBtn) {
-                        retryBtn.click();
-                        return { success: true };
-                    }
-                }
-
-                // 列出所有可用的选项以便调试
-                const allOptions = Array.from(document.querySelectorAll('[id*="option_"]')).map(el => el.id);
-                return { success: false, error: '未找到新聊天按钮', availableOptions: allOptions };
+            const opened = await this.page.evaluate(() => {
+                const button = document.getElementById('option_start_new_chat');
+                if (!button || button.offsetParent === null) document.getElementById('options_button')?.click();
+                return !!button;
             });
+            if (!opened) return { success: false, error: '未找到新聊天按钮' };
+            const button = await this.page.waitForSelector('#option_start_new_chat', { visible: true, timeout: 3000 });
+            await this.page.evaluate(previous => {
+                const context = window.SillyTavern?.getContext?.();
+                const event = context?.eventTypes?.CHAT_CHANGED || context?.event_types?.CHAT_CHANGED;
+                if (!event || !context.eventSource?.on || !context.eventSource?.removeListener) {
+                    throw new Error('当前酒馆版本未提供聊天加载事件，无法确认重置完成');
+                }
+                const state = { loaded: false };
+                const listener = chatId => {
+                    if (chatId && chatId !== previous && window.SillyTavern.getContext().chatId === chatId) state.loaded = true;
+                };
+                state.cleanup = () => context.eventSource.removeListener(event, listener);
+                window.__qqBridgeChatReset = state;
+                context.eventSource.on(event, listener);
+            }, previousChat);
+            await button.click();
 
-            if (result.success) {
-                await new Promise(r => setTimeout(r, 2000)); // 等待新聊天加载
-                logger.info('SillyTavern', '已开始新聊天');
-                return { success: true };
+            // 新版 dialog 和旧版确认弹窗；不勾选删除已有聊天。
+            try {
+                const confirm = await this.page.waitForSelector('dialog[open] .popup-button-ok, #dialogue_popup_ok, .popup_ok', { visible: true, timeout: 3000 });
+                await this.page.evaluate(() => {
+                    const deleteChat = document.getElementById('del_chat_checkbox');
+                    if (deleteChat) deleteChat.checked = false;
+                });
+                await confirm.click();
+            } catch (error) {
+                if (error.name !== 'TimeoutError') throw error;
             }
-
-            // 调试：输出可用的选项
-            if (result.availableOptions) {
-                logger.info('SillyTavern', `可用选项: ${result.availableOptions.join(', ')}`);
-            }
-            return { success: false, error: result.error };
-
+            await this.page.waitForFunction(previous => {
+                const current = window.SillyTavern?.getContext?.().chatId || document.getElementById('selected_chat_pole')?.value;
+                return current && current !== previous && window.__qqBridgeChatReset?.loaded;
+            }, { timeout: 15000 }, previousChat);
+            logger.info('SillyTavern', '已开始新聊天');
+            return { success: true };
         } catch (error) {
             logger.error('SillyTavern', `开始新聊天失败: ${error.message}`);
             return { success: false, error: error.message };
+        } finally {
+            if (this.page) {
+                await this.page.evaluate(() => {
+                    window.__qqBridgeChatReset?.cleanup();
+                    delete window.__qqBridgeChatReset;
+                }).catch(() => {});
+            }
+            this.isProcessing = false;
+            this.processQueue();
         }
     }
 
@@ -645,39 +648,6 @@ class SillyTavernClient {
         } catch (error) {
             logger.error('SillyTavern', `获取当前信息失败: ${error.message}`);
             return { characterName: '', messageCount: 0 };
-        }
-    }
-
-    /**
-     * 开始新聊天
-     */
-    async startNewChat() {
-        try {
-            if (!this.initialized) await this.initialize();
-
-            logger.info('SillyTavern', '开始新聊天...');
-
-            const newChatBtn = await this.page.$('#option_new_chat');
-            if (newChatBtn) {
-                await newChatBtn.click();
-                await new Promise(r => setTimeout(r, 1000));
-
-                // 确认弹窗（如果有）
-                const confirmBtn = await this.page.$('.popup_ok');
-                if (confirmBtn) {
-                    await confirmBtn.click();
-                }
-
-                await new Promise(r => setTimeout(r, 1000));
-                logger.info('SillyTavern', '已开始新聊天');
-                return { success: true };
-            }
-
-            return { success: false, error: '未找到新聊天按钮' };
-
-        } catch (error) {
-            logger.error('SillyTavern', `开始新聊天失败: ${error.message}`);
-            return { success: false, error: error.message };
         }
     }
 

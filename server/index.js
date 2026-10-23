@@ -36,6 +36,25 @@ app.use(express.urlencoded({ extended: true }));
 // 静态文件服务（WebUI）
 app.use(express.static(path.join(__dirname, '../public')));
 
+// REST 和 WebSocket 共用认证（apiToken 为空时跳过认证）
+function isAuthorized(req) {
+    const apiToken = configManager.get('webui.apiToken');
+    if (!apiToken) return true;
+
+    const authHeader = req.headers['authorization'] || '';
+    const queryToken = new URL(req.url, 'http://localhost').searchParams.get('token') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : queryToken;
+
+    return token === apiToken;
+}
+
+app.use('/api', (req, res, next) => {
+    if (!isAuthorized(req)) {
+        return res.status(401).json({ success: false, error: '未授权：无效的 API Token' });
+    }
+    next();
+});
+
 // API 路由
 app.use('/api', apiRoutes);
 
@@ -45,9 +64,18 @@ app.get('/', (req, res) => {
 });
 
 // 创建 WebSocket 服务器（用于实时日志推送）
-const wss = new WebSocket.Server({ server, path: '/ws' });
+const wss = new WebSocket.Server({
+    server,
+    path: '/ws',
+    verifyClient: ({ req }, done) => done(isAuthorized(req), 401, 'Unauthorized')
+});
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+    const checkAuthorization = () => {
+        if (isAuthorized(req)) return true;
+        ws.close(1008, 'Unauthorized');
+        return false;
+    };
     logger.info('WebUI', '新的 WebSocket 客户端已连接');
 
     // 发送当前状态
@@ -60,7 +88,7 @@ wss.on('connection', (ws) => {
 
     // 添加日志监听器
     const logListener = (logEntry) => {
-        if (ws.readyState === WebSocket.OPEN) {
+        if (ws.readyState === WebSocket.OPEN && checkAuthorization()) {
             ws.send(JSON.stringify({ type: 'log', data: logEntry }));
         }
     };
@@ -68,7 +96,7 @@ wss.on('connection', (ws) => {
 
     // 定期发送状态更新
     const statusInterval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
+        if (ws.readyState === WebSocket.OPEN && checkAuthorization()) {
             const status = bridgeService.getStatus();
             ws.send(JSON.stringify({ type: 'status', data: status }));
         }
@@ -108,7 +136,11 @@ server.listen(port, () => {
 const autoStart = configManager.get('webui.enabled') !== false;
 if (autoStart) {
     setTimeout(async () => {
-        await bridgeService.start();
+        try {
+            await bridgeService.start();
+        } catch (err) {
+            logger.error('Server', `自动启动桥接服务失败: ${err.message}`);
+        }
     }, 1000);
 }
 

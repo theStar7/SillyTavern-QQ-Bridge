@@ -12,11 +12,39 @@ class SillyTavernBridgeApp {
     }
 
     init() {
+        // Initialize Lucide icons
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+        this.initTheme();
         this.bindNavigation();
+        this.bindMobileMenu();
         this.bindButtons();
         this.bindForm();
         this.connectWebSocket();
         this.loadConfig();
+    }
+
+    // Theme management
+    initTheme() {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'dark') {
+            document.documentElement.removeAttribute('data-theme');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+        }
+    }
+
+    toggleTheme() {
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        if (isLight) {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+        }
     }
 
     // 导航切换
@@ -25,6 +53,7 @@ class SillyTavernBridgeApp {
             item.addEventListener('click', () => {
                 const page = item.dataset.page;
                 this.switchPage(page);
+                this.closeMobileMenu();
             });
         });
 
@@ -45,8 +74,27 @@ class SillyTavernBridgeApp {
         document.getElementById(`page-${pageId}`)?.classList.add('active');
     }
 
+    // Mobile menu
+    bindMobileMenu() {
+        const toggleBtn = document.getElementById('btn-menu-toggle');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        toggleBtn?.addEventListener('click', () => {
+            document.getElementById('sidebar')?.classList.toggle('open');
+            overlay?.classList.toggle('active');
+        });
+
+        overlay?.addEventListener('click', () => this.closeMobileMenu());
+    }
+
+    closeMobileMenu() {
+        document.getElementById('sidebar')?.classList.remove('open');
+        document.getElementById('sidebar-overlay')?.classList.remove('active');
+    }
+
     // 绑定按钮事件
     bindButtons() {
+        document.getElementById('btn-theme-toggle')?.addEventListener('click', () => this.toggleTheme());
         document.getElementById('btn-start-service')?.addEventListener('click', () => this.startService());
         document.getElementById('btn-stop-service')?.addEventListener('click', () => this.stopService());
         document.getElementById('btn-test-st')?.addEventListener('click', () => this.testSillyTavern());
@@ -97,7 +145,8 @@ class SillyTavernBridgeApp {
     // WebSocket 连接
     connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        const token = localStorage.getItem('apiToken') || '';
+        const wsUrl = `${protocol}//${window.location.host}/ws${token ? `?token=${encodeURIComponent(token)}` : ''}`;
 
         this.ws = new WebSocket(wsUrl);
 
@@ -114,14 +163,32 @@ class SillyTavernBridgeApp {
             }
         };
 
-        this.ws.onclose = () => {
+        this.ws.onclose = (event) => {
+            this.markDisconnected();
+            if (event.code === 1008) {
+                this.promptApiToken();
+                return;
+            }
             console.log('WebSocket 断开，5秒后重连...');
             setTimeout(() => this.connectWebSocket(), 5000);
         };
 
         this.ws.onerror = (error) => {
+            this.markDisconnected();
             console.error('WebSocket 错误:', error);
         };
+    }
+
+    markDisconnected() {
+        const bridgeEl = document.getElementById('bridge-status');
+        bridgeEl.classList.remove('running');
+        bridgeEl.classList.add('offline');
+        this.setStatusIcon(bridgeEl, 'alert-circle');
+        bridgeEl.querySelector('.status-text').textContent = '连接中断';
+        for (const prefix of ['st', 'nc']) {
+            this.updateServiceStatus(prefix, false);
+            document.querySelector(`#${prefix}-status .status-text`).textContent = '未知';
+        }
     }
 
     handleWsMessage(data) {
@@ -147,12 +214,12 @@ class SillyTavernBridgeApp {
             if (status.running) {
                 bridgeEl.classList.add('running');
                 bridgeEl.classList.remove('offline');
-                bridgeEl.querySelector('.status-icon').textContent = '▶️';
+                this.setStatusIcon(bridgeEl, 'play-circle');
                 bridgeEl.querySelector('.status-text').textContent = '运行中';
             } else {
                 bridgeEl.classList.remove('running');
                 bridgeEl.classList.add('offline');
-                bridgeEl.querySelector('.status-icon').textContent = '⏸️';
+                this.setStatusIcon(bridgeEl, 'pause-circle');
                 bridgeEl.querySelector('.status-text').textContent = '已停止';
             }
         }
@@ -172,6 +239,14 @@ class SillyTavernBridgeApp {
         }
     }
 
+    setStatusIcon(el, iconName) {
+        const iconEl = el.querySelector('.status-icon');
+        if (iconEl) {
+            iconEl.setAttribute('data-lucide', iconName);
+            if (window.lucide) lucide.createIcons({ nodes: [iconEl] });
+        }
+    }
+
     updateServiceStatus(prefix, connected) {
         const statusEl = document.getElementById(`${prefix}-status`);
         const dotEl = document.getElementById(`${prefix}-status-dot`);
@@ -180,12 +255,12 @@ class SillyTavernBridgeApp {
             if (connected) {
                 statusEl.classList.add('online');
                 statusEl.classList.remove('offline');
-                statusEl.querySelector('.status-icon').textContent = '🟢';
+                this.setStatusIcon(statusEl, 'check-circle');
                 statusEl.querySelector('.status-text').textContent = '在线';
             } else {
                 statusEl.classList.remove('online');
                 statusEl.classList.add('offline');
-                statusEl.querySelector('.status-icon').textContent = '🔴';
+                this.setStatusIcon(statusEl, 'x-circle');
                 statusEl.querySelector('.status-text').textContent = '离线';
             }
         }
@@ -257,18 +332,68 @@ class SillyTavernBridgeApp {
     // API 调用
     async apiCall(method, endpoint, data = null) {
         try {
+            const token = localStorage.getItem('apiToken') || '';
             const options = {
                 method,
-                headers: { 'Content-Type': 'application/json' }
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
             };
             if (data) options.body = JSON.stringify(data);
 
             const response = await fetch(`/api${endpoint}`, options);
-            return await response.json();
+
+            if (response.status === 401) {
+                this.promptApiToken();
+                return { success: false, error: '需要 API Token 认证' };
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                result.error = result.error || result.data?.error || '请求失败';
+            }
+            return result;
         } catch (error) {
             console.error('API 调用失败:', error);
             return { success: false, error: error.message };
         }
+    }
+
+    promptApiToken() {
+        if (document.getElementById('token-modal')) return;
+
+        const modal = document.createElement('div');
+        modal.id = 'token-modal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+        modal.innerHTML = `
+            <div style="background:var(--bg-primary);padding:24px;border-radius:12px;max-width:400px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,0.3);">
+                <h3 style="margin:0 0 12px;">API Token 认证</h3>
+                <p style="margin:0 0 16px;color:var(--text-secondary);font-size:14px;">服务器已启用 API Token 认证，请输入 Token：</p>
+                <input type="password" id="token-input" placeholder="输入 API Token"
+                    style="width:100%;padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);box-sizing:border-box;margin-bottom:12px;">
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button id="token-cancel" style="padding:6px 16px;border:none;border-radius:6px;cursor:pointer;background:var(--bg-secondary);color:var(--text-primary);">取消</button>
+                    <button id="token-submit" style="padding:6px 16px;border:none;border-radius:6px;cursor:pointer;background:var(--accent-color);color:#fff;">确认</button>
+                </div>
+            </div>`;
+
+        document.body.appendChild(modal);
+
+        const input = document.getElementById('token-input');
+        const submit = () => {
+            const val = input.value.trim();
+            if (val) {
+                localStorage.setItem('apiToken', val);
+                modal.remove();
+                location.reload();
+            }
+        };
+
+        document.getElementById('token-submit').onclick = submit;
+        document.getElementById('token-cancel').onclick = () => modal.remove();
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+        input.focus();
     }
 
     async startService() {
@@ -312,7 +437,11 @@ class SillyTavernBridgeApp {
     async clearHistory() {
         const result = await this.apiCall('DELETE', '/history');
         if (result.success) {
-            this.showToast('success', '已清除', '对话历史已清除');
+            this.showToast('success', '已重置', result.message || '已开始新会话，保存的历史仍然保留');
+            await this.loadChats();
+            await this.loadCurrentInfo();
+        } else {
+            this.showToast('error', '重置失败', result.error);
         }
     }
 
@@ -356,6 +485,7 @@ class SillyTavernBridgeApp {
                 option.textContent = char.name;
                 select.appendChild(option);
             });
+            await this.loadChats();
             this.showToast('success', '加载成功', `发现 ${result.data.length} 个角色`);
         } else {
             this.showToast('error', '加载失败', result.error || '无法获取角色列表');
@@ -455,12 +585,8 @@ class SillyTavernBridgeApp {
                 data.modelId || '未知';
 
             // 填充表单
-            if (data.apiUrl) {
-                document.getElementById('api-url-input').value = data.apiUrl;
-            }
-            if (data.modelId) {
-                document.getElementById('model-id-input').value = data.modelId;
-            }
+            document.getElementById('api-url-input').value = data.apiUrl ?? '';
+            document.getElementById('model-id-input').value = data.modelId ?? '';
         }
 
         // 获取连接配置文件列表
@@ -493,6 +619,9 @@ class SillyTavernBridgeApp {
         const result = await this.apiCall('POST', '/connection-profiles/select', { profile });
 
         if (result.success) {
+            for (const id of ['api-url-input', 'model-id-input', 'api-key-input']) {
+                document.getElementById(id).value = '';
+            }
             this.showToast('success', '切换成功', `已切换到: ${result.data?.profileName || profile}`);
             // 刷新 API 设置显示
             await this.refreshApiSettings();
@@ -521,6 +650,7 @@ class SillyTavernBridgeApp {
         const result = await this.apiCall('POST', '/api-settings', settings);
 
         if (result.success) {
+            document.getElementById('api-key-input').value = '';
             this.showToast('success', '应用成功', `已更新: ${result.data?.changes?.join(', ') || '设置'}`);
             // 刷新显示
             await this.refreshApiSettings();
@@ -604,11 +734,15 @@ class SillyTavernBridgeApp {
         if (type === 'checkbox') {
             el.checked = !!value;
         } else {
-            el.value = value || '';
+            el.value = value ?? '';
         }
     }
 
     async saveConfig() {
+        const readDelay = (id, fallback) => {
+            const value = parseInt(document.getElementById(id)?.value, 10);
+            return Number.isNaN(value) ? fallback : value;
+        };
         const config = {
             sillytavern: {
                 apiUrl: document.getElementById('st-api-url')?.value || '',
@@ -629,9 +763,9 @@ class SillyTavernBridgeApp {
                     .split(',').map(s => s.trim()).filter(s => s),
                 botQQ: document.getElementById('reply-bot-qq')?.value || '',
                 requireAtInGroup: document.getElementById('reply-require-at')?.checked ?? true,
-                replyDelay: parseInt(document.getElementById('reply-delay')?.value) || 500,
-                maxReplyDelay: parseInt(document.getElementById('reply-max-delay')?.value) || 3000,
-                delayPerChar: parseInt(document.getElementById('reply-delay-per-char')?.value) || 50
+                replyDelay: readDelay('reply-delay', 500),
+                maxReplyDelay: readDelay('reply-max-delay', 3000),
+                delayPerChar: readDelay('reply-delay-per-char', 50)
             },
             accessControl: {
                 blacklist: this.textToArray(document.getElementById('ac-blacklist')?.value),
@@ -643,7 +777,7 @@ class SillyTavernBridgeApp {
 
         const result = await this.apiCall('POST', '/config', config);
         if (result.success) {
-            this.showToast('success', '保存成功', '配置已保存并生效');
+            this.showToast('success', '保存成功', result.message || '配置已保存');
         } else {
             this.showToast('error', '保存失败', result.error);
         }
@@ -657,18 +791,26 @@ class SillyTavernBridgeApp {
     // Toast 通知
     showToast(type, title, message) {
         const container = document.getElementById('toast-container');
-        const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+        const iconMap = {
+            success: 'check-circle',
+            error: 'x-circle',
+            warning: 'alert-triangle',
+            info: 'info'
+        };
 
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.innerHTML = `
-            <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
+            <i data-lucide="${iconMap[type] || 'info'}" class="toast-icon"></i>
             <div class="toast-content">
-                <div class="toast-title">${title}</div>
-                <div class="toast-message">${message}</div>
+                <div class="toast-title"></div>
+                <div class="toast-message"></div>
             </div>
-            <button class="toast-close">×</button>
+            <button class="toast-close"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         `;
+
+        toast.querySelector('.toast-title').textContent = title ?? '';
+        toast.querySelector('.toast-message').textContent = message ?? '';
 
         toast.querySelector('.toast-close').addEventListener('click', () => {
             toast.classList.add('toast-out');
@@ -676,6 +818,9 @@ class SillyTavernBridgeApp {
         });
 
         container.appendChild(toast);
+
+        // Initialize Lucide icons for the new toast
+        if (window.lucide) lucide.createIcons({ nodes: toast.querySelectorAll('[data-lucide]') });
 
         setTimeout(() => {
             if (toast.parentNode) {

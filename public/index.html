@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -8,17 +8,28 @@
     <title>SillyTavern-QQ-Bridge | 控制面板</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+        <button class="hamburger-btn" id="btn-menu-toggle" aria-label="Toggle menu">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+        </button>
+        <span class="logo-text" style="font-size: 1rem;">SillyTavern Bridge</span>
+        <div style="width: 40px;"></div>
+    </div>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
     <div class="app-container">
         <!-- 侧边导航 -->
-        <nav class="sidebar">
+        <nav class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <span class="logo-icon">🌉</span>
+                    <i data-lucide="cable" class="logo-icon"></i>
                     <span class="logo-text">SillyTavern Bridge</span>
                 </div>
                 <span class="version-badge">v1.0.0</span>
@@ -26,19 +37,19 @@
 
             <ul class="nav-menu">
                 <li class="nav-item active" data-page="dashboard">
-                    <span class="nav-icon">📊</span>
+                    <i data-lucide="layout-dashboard" class="nav-icon"></i>
                     <span class="nav-label">仪表盘</span>
                 </li>
                 <li class="nav-item" data-page="settings">
-                    <span class="nav-icon">⚙️</span>
+                    <i data-lucide="settings" class="nav-icon"></i>
                     <span class="nav-label">配置管理</span>
                 </li>
                 <li class="nav-item" data-page="logs">
-                    <span class="nav-icon">📜</span>
+                    <i data-lucide="scroll-text" class="nav-icon"></i>
                     <span class="nav-label">实时日志</span>
                 </li>
                 <li class="nav-item" data-page="guide">
-                    <span class="nav-icon">📖</span>
+                    <i data-lucide="book-open" class="nav-icon"></i>
                     <span class="nav-label">使用指南</span>
                 </li>
             </ul>
@@ -53,6 +64,16 @@
                         <span class="status-dot" id="nc-status-dot"></span>
                         <span>NapCat</span>
                     </div>
+                </div>
+                <div class="theme-toggle">
+                    <span class="theme-toggle-label">主题</span>
+                    <button class="theme-toggle-btn" id="btn-theme-toggle" aria-label="切换主题">
+                        <span class="theme-toggle-track">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                        </span>
+                        <span class="theme-toggle-thumb"></span>
+                    </button>
                 </div>
             </div>
         </nav>
@@ -70,31 +91,35 @@
                     <!-- 服务状态卡片 -->
                     <div class="card status-card">
                         <div class="card-header">
-                            <h3>🔌 服务状态</h3>
+                            <h3><i data-lucide="radio" class="card-icon"></i> 服务状态</h3>
                             <div class="service-toggle">
-                                <button class="btn btn-success" id="btn-start-service">启动服务</button>
-                                <button class="btn btn-danger" id="btn-stop-service">停止服务</button>
+                                <button class="btn btn-success" id="btn-start-service">
+                                    <i data-lucide="play" class="btn-icon"></i> 启动服务
+                                </button>
+                                <button class="btn btn-danger" id="btn-stop-service">
+                                    <i data-lucide="square" class="btn-icon"></i> 停止服务
+                                </button>
                             </div>
                         </div>
                         <div class="card-body">
                             <div class="status-grid">
                                 <div class="status-box">
                                     <div class="status-indicator" id="bridge-status">
-                                        <span class="status-icon">⏸️</span>
+                                        <span class="status-icon" data-lucide="pause-circle"></span>
                                         <span class="status-text">已停止</span>
                                     </div>
                                     <span class="status-label">桥接服务</span>
                                 </div>
                                 <div class="status-box">
                                     <div class="status-indicator" id="st-status">
-                                        <span class="status-icon">❓</span>
+                                        <span class="status-icon" data-lucide="help-circle"></span>
                                         <span class="status-text">未知</span>
                                     </div>
                                     <span class="status-label">SillyTavern</span>
                                 </div>
                                 <div class="status-box">
                                     <div class="status-indicator" id="nc-status">
-                                        <span class="status-icon">❓</span>
+                                        <span class="status-icon" data-lucide="help-circle"></span>
                                         <span class="status-text">未知</span>
                                     </div>
                                     <span class="status-label">NapCat</span>
@@ -106,7 +131,7 @@
                     <!-- 统计数据卡片 -->
                     <div class="card stats-card">
                         <div class="card-header">
-                            <h3>📈 运行统计</h3>
+                            <h3><i data-lucide="bar-chart-3" class="card-icon"></i> 运行统计</h3>
                             <button class="btn btn-secondary btn-sm" id="btn-reset-stats">重置</button>
                         </div>
                         <div class="card-body">
@@ -134,24 +159,24 @@
                     <!-- 快速操作卡片 -->
                     <div class="card actions-card">
                         <div class="card-header">
-                            <h3>⚡ 快速操作</h3>
+                            <h3><i data-lucide="zap" class="card-icon"></i> 快速操作</h3>
                         </div>
                         <div class="card-body">
                             <div class="action-buttons">
                                 <button class="btn btn-primary" id="btn-test-st">
-                                    <span class="btn-icon">🧪</span>
+                                    <i data-lucide="test-tubes" class="btn-icon"></i>
                                     测试酒馆连接
                                 </button>
                                 <button class="btn btn-primary" id="btn-test-nc">
-                                    <span class="btn-icon">🧪</span>
+                                    <i data-lucide="test-tubes" class="btn-icon"></i>
                                     测试 NapCat 连接
                                 </button>
                                 <button class="btn btn-warning" id="btn-clear-history">
-                                    <span class="btn-icon">🗑️</span>
-                                    清除对话历史
+                                    <i data-lucide="trash-2" class="btn-icon"></i>
+                                    重置当前会话
                                 </button>
                                 <button class="btn btn-secondary" id="btn-clear-logs">
-                                    <span class="btn-icon">📝</span>
+                                    <i data-lucide="eraser" class="btn-icon"></i>
                                     清空日志
                                 </button>
                             </div>
@@ -161,8 +186,10 @@
                     <!-- 角色和聊天管理卡片 -->
                     <div class="card character-card">
                         <div class="card-header">
-                            <h3>🎭 角色与聊天管理</h3>
-                            <button class="btn btn-secondary btn-sm" id="btn-refresh-chars">刷新</button>
+                            <h3><i data-lucide="users" class="card-icon"></i> 角色与聊天管理</h3>
+                            <button class="btn btn-secondary btn-sm" id="btn-refresh-chars">
+                                <i data-lucide="refresh-cw" class="btn-icon"></i> 刷新
+                            </button>
                         </div>
                         <div class="card-body">
                             <!-- 当前状态 -->
@@ -202,7 +229,7 @@
                             <!-- 新聊天按钮 -->
                             <div class="action-buttons" style="margin-top: 1rem;">
                                 <button class="btn btn-success" id="btn-new-chat">
-                                    <span class="btn-icon">✨</span>
+                                    <i data-lucide="message-square-plus" class="btn-icon"></i>
                                     开始新聊天
                                 </button>
                             </div>
@@ -212,8 +239,10 @@
                     <!-- API 设置管理卡片 -->
                     <div class="card api-settings-card">
                         <div class="card-header">
-                            <h3>🔌 API 设置</h3>
-                            <button class="btn btn-secondary btn-sm" id="btn-refresh-api">刷新</button>
+                            <h3><i data-lucide="plug" class="card-icon"></i> API 设置</h3>
+                            <button class="btn btn-secondary btn-sm" id="btn-refresh-api">
+                                <i data-lucide="refresh-cw" class="btn-icon"></i> 刷新
+                            </button>
                         </div>
                         <div class="card-body">
                             <!-- 当前 API 信息 -->
@@ -258,15 +287,15 @@
                                 </div>
                                 <div class="action-buttons api-test-buttons" style="margin-top: 1rem;">
                                     <button class="btn btn-primary" id="btn-apply-api">
-                                        <span class="btn-icon">💾</span>
+                                        <i data-lucide="save" class="btn-icon"></i>
                                         应用设置
                                     </button>
                                     <button class="btn btn-secondary" id="btn-test-connection">
-                                        <span class="btn-icon">🔗</span>
+                                        <i data-lucide="link" class="btn-icon"></i>
                                         测试连接
                                     </button>
                                     <button class="btn btn-success" id="btn-test-message">
-                                        <span class="btn-icon">📨</span>
+                                        <i data-lucide="send" class="btn-icon"></i>
                                         发送测试消息
                                     </button>
                                 </div>
@@ -277,8 +306,10 @@
                     <!-- 最近日志卡片 -->
                     <div class="card logs-preview-card">
                         <div class="card-header">
-                            <h3>📋 最近日志</h3>
-                            <a href="#" class="link-more" data-goto="logs">查看全部 →</a>
+                            <h3><i data-lucide="file-text" class="card-icon"></i> 最近日志</h3>
+                            <a href="#" class="link-more" data-goto="logs">
+                                查看全部 <i data-lucide="arrow-right" style="width:14px;height:14px;vertical-align:middle;"></i>
+                            </a>
                         </div>
                         <div class="card-body">
                             <div class="logs-preview" id="logs-preview">
@@ -300,7 +331,7 @@
                     <!-- SillyTavern 设置 -->
                     <div class="card config-section">
                         <div class="card-header">
-                            <h3>🍺 SillyTavern 酒馆设置</h3>
+                            <h3><i data-lucide="beer" class="card-icon"></i> SillyTavern 酒馆设置</h3>
                         </div>
                         <div class="card-body">
                             <div class="form-grid">
@@ -352,7 +383,7 @@
                     <!-- NapCat 设置 -->
                     <div class="card config-section">
                         <div class="card-header">
-                            <h3>🐱 NapCat (OneBot 11) 设置</h3>
+                            <h3><i data-lucide="cat" class="card-icon"></i> NapCat (OneBot 11) 设置</h3>
                         </div>
                         <div class="card-body">
                             <div class="form-grid">
@@ -374,7 +405,7 @@
                     <!-- 回复设置 -->
                     <div class="card config-section">
                         <div class="card-header">
-                            <h3>💬 回复设置</h3>
+                            <h3><i data-lucide="message-circle" class="card-icon"></i> 回复设置</h3>
                         </div>
                         <div class="card-body">
                             <div class="form-grid">
@@ -425,7 +456,7 @@
                     <!-- 访问控制 -->
                     <div class="card config-section">
                         <div class="card-header">
-                            <h3>🔒 访问控制</h3>
+                            <h3><i data-lucide="shield" class="card-icon"></i> 访问控制</h3>
                         </div>
                         <div class="card-body">
                             <div class="form-grid">
@@ -456,11 +487,11 @@
                     <!-- 保存按钮 -->
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary btn-lg">
-                            <span class="btn-icon">💾</span>
+                            <i data-lucide="save" class="btn-icon"></i>
                             保存配置
                         </button>
                         <button type="button" class="btn btn-secondary btn-lg" id="btn-reload-config">
-                            <span class="btn-icon">🔄</span>
+                            <i data-lucide="rotate-ccw" class="btn-icon"></i>
                             重新加载
                         </button>
                     </div>
@@ -511,7 +542,7 @@
                 <div class="guide-content">
                     <div class="card guide-card">
                         <div class="card-header">
-                            <h3>🚀 快速开始</h3>
+                            <h3><i data-lucide="rocket" class="card-icon"></i> 快速开始</h3>
                         </div>
                         <div class="card-body">
                             <ol class="guide-steps">
@@ -537,7 +568,7 @@
 
                     <div class="card guide-card important">
                         <div class="card-header">
-                            <h3>⚠️ SillyTavern 配置说明（必读）</h3>
+                            <h3><i data-lucide="alert-triangle" class="card-icon"></i> SillyTavern 配置说明（必读）</h3>
                         </div>
                         <div class="card-body">
                             <p class="guide-intro">
@@ -559,7 +590,7 @@ listen: true</code></pre>
   - 127.0.0.1</code></pre>
 
                                 <div class="warning-box">
-                                    <strong>⚠️ 安全提示：</strong>
+                                    <strong>安全提示：</strong>
                                     如果您需要快速测试，可以暂时设置为 <code>0.0.0.0/0</code> 允许所有连接。
                                     <strong>但请注意这存在安全风险，测试完成后请恢复为具体 IP。</strong>
                                     <pre><code># 仅用于测试，存在安全风险！
@@ -579,7 +610,7 @@ basicAuthUser:
                             </div>
 
                             <div class="tip-box">
-                                <strong>💡 提示：</strong>
+                                <strong>提示：</strong>
                                 修改 <code>config.yaml</code> 后需要重启 SillyTavern 才能生效。
                             </div>
                         </div>
@@ -587,7 +618,7 @@ basicAuthUser:
 
                     <div class="card guide-card">
                         <div class="card-header">
-                            <h3>🐱 NapCat 配置说明</h3>
+                            <h3><i data-lucide="cat" class="card-icon"></i> NapCat 配置说明</h3>
                         </div>
                         <div class="card-body">
                             <p>确保 NapCat 的反向 WebSocket 服务已启动，默认地址为 <code>ws://127.0.0.1:3001</code>。</p>
@@ -606,7 +637,7 @@ basicAuthUser:
 
                     <div class="card guide-card">
                         <div class="card-header">
-                            <h3>💬 触发方式说明</h3>
+                            <h3><i data-lucide="message-circle" class="card-icon"></i> 触发方式说明</h3>
                         </div>
                         <div class="card-body">
                             <table class="guide-table">

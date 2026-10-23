@@ -50,18 +50,112 @@ router.get('/config', (req, res) => {
 });
 
 /**
+ * 配置 schema 定义（键名 → 类型）
+ * 只允许已知字段通过，拒绝未知键
+ */
+const CONFIG_SCHEMA = {
+    sillytavern: {
+        apiUrl: 'string',
+        apiKey: 'string',
+        basicAuth: {
+            enabled: 'boolean',
+            username: 'string',
+            password: 'string'
+        },
+        characterId: 'string',
+        apiMode: 'string'
+    },
+    napcat: {
+        wsUrl: 'string',
+        accessToken: 'string'
+    },
+    reply: {
+        triggerPrefixes: 'array',
+        requireAtInGroup: 'boolean',
+        botQQ: 'string',
+        replyDelay: 'number',
+        maxReplyDelay: 'number',
+        delayPerChar: 'number'
+    },
+    accessControl: {
+        blacklist: 'array',
+        whitelist: 'array',
+        groupBlacklist: 'array',
+        groupWhitelist: 'array'
+    },
+    webui: {
+        port: 'number',
+        enabled: 'boolean',
+        apiToken: 'string'
+    },
+    logging: {
+        level: 'string',
+        maxLogEntries: 'number'
+    }
+};
+
+/**
+ * 校验配置对象，返回错误数组（空数组 = 合法）
+ */
+function validateConfig(data, schema, prefix = '') {
+    const errors = [];
+
+    for (const key of Object.keys(data)) {
+        const fullPath = prefix ? `${prefix}.${key}` : key;
+
+        if (!(key in schema)) {
+            errors.push(`未知配置项: ${fullPath}`);
+            continue;
+        }
+
+        const expected = schema[key];
+        const value = data[key];
+
+        if (typeof expected === 'string') {
+            // 基本类型校验
+            if (expected === 'array') {
+                if (!Array.isArray(value)) {
+                    errors.push(`${fullPath} 应为数组`);
+                }
+            } else if (typeof value !== expected) {
+                errors.push(`${fullPath} 类型错误：期望 ${expected}，实际 ${typeof value}`);
+            }
+        } else if (typeof expected === 'object' && expected !== null) {
+            // 嵌套对象校验
+            if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+                errors.push(`${fullPath} 应为对象`);
+            } else {
+                errors.push(...validateConfig(value, expected, fullPath));
+            }
+        }
+    }
+
+    return errors;
+}
+
+/**
  * 保存配置
  * POST /api/config
  */
-router.post('/config', (req, res) => {
+router.post('/config', async (req, res) => {
+    let saved = false;
     try {
         const newConfig = req.body;
 
         // 验证必要字段
-        if (!newConfig) {
+        if (!newConfig || typeof newConfig !== 'object' || Array.isArray(newConfig)) {
             return res.status(400).json({
                 success: false,
-                error: '配置数据不能为空'
+                error: '配置数据不能为空且必须为对象'
+            });
+        }
+
+        // 结构校验：拒绝未知键和类型错误
+        const errors = validateConfig(newConfig, CONFIG_SCHEMA);
+        if (errors.length > 0) {
+            return res.status(400).json({
+                success: false,
+                error: '配置校验失败: ' + errors.join('; ')
             });
         }
 
@@ -80,21 +174,43 @@ router.post('/config', (req, res) => {
             newConfig.napcat.accessToken = currentConfig.napcat?.accessToken;
         }
 
-        configManager.save(newConfig);
+        const stConfig = currentConfig.sillytavern || {};
+        const stPatch = newConfig.sillytavern || {};
+        const stChanged = ['apiUrl', 'apiKey'].some(key => key in stPatch && stPatch[key] !== stConfig[key]) ||
+            ['enabled', 'username', 'password'].some(key => key in (stPatch.basicAuth || {}) && stPatch.basicAuth[key] !== stConfig.basicAuth?.[key]);
+        const napChanged = ['wsUrl', 'accessToken'].some(key => key in (newConfig.napcat || {}) && newConfig.napcat[key] !== currentConfig.napcat?.[key]);
+        if (stChanged && (sillyTavernClient.isProcessing || sillyTavernClient.messageQueue?.length)) {
+            return res.status(409).json({ success: false, error: '正在处理消息，请稍后再修改 SillyTavern 连接配置' });
+        }
 
-        // 重新初始化服务
-        if (bridgeService.running) {
-            sillyTavernClient.initialize();
+        configManager.save(newConfig);
+        saved = true;
+
+        let napReconnecting = false;
+        if (napChanged && (bridgeService.running || napCatClient.connected || napCatClient.ws || napCatClient.reconnectTimer)) {
+            napCatClient.disconnect();
+            napCatClient.connect();
+            napReconnecting = true;
+        }
+        if (stChanged && (bridgeService.running || sillyTavernClient.initialized)) {
+            sillyTavernClient.isProcessing = true;
+            try {
+                await sillyTavernClient.close();
+                await sillyTavernClient.initialize();
+            } finally {
+                sillyTavernClient.isProcessing = false;
+                sillyTavernClient.processQueue?.();
+            }
         }
 
         res.json({
             success: true,
-            message: '配置已保存'
+            message: napReconnecting ? '配置已保存；NapCat 正在重连，请查看连接状态' : '配置已保存'
         });
     } catch (error) {
         res.status(500).json({
             success: false,
-            error: error.message
+            error: saved ? '配置已保存，但重新连接失败: ' + error.message : error.message
         });
     }
 });
@@ -362,20 +478,17 @@ router.delete('/logs', (req, res) => {
 });
 
 /**
- * 清除对话历史
+ * 重置当前会话（保留保存的历史）
  * DELETE /api/history
  */
-router.delete('/history', (req, res) => {
+router.delete('/history', async (req, res) => {
     try {
         const userId = req.query.userId;
-        if (userId) {
-            sillyTavernClient.clearHistory(userId);
-        } else {
-            sillyTavernClient.clearAllHistory();
-        }
-        res.json({
-            success: true,
-            message: '对话历史已清除'
+        const result = userId ? await sillyTavernClient.clearHistory(userId) : await sillyTavernClient.clearAllHistory();
+        res.status(result.success ? 200 : 400).json({
+            success: result.success,
+            message: result.success ? '当前会话已重置，保存的历史仍然保留' : undefined,
+            error: result.error
         });
     } catch (error) {
         res.status(500).json({

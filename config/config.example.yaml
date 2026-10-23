@@ -27,6 +27,7 @@ accessControl:
 webui:
   port: 3031
   enabled: true
+  apiToken: ""
 logging:
   level: info
   maxLogEntries: 500

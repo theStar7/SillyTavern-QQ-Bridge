@@ -31,7 +31,11 @@ class BridgeService {
         logger.info('Bridge', '正在启动桥接服务...');
 
         // 初始化 SillyTavern 客户端
-        sillyTavernClient.initialize();
+        try {
+            await sillyTavernClient.initialize();
+        } catch (error) {
+            logger.warn('Bridge', `SillyTavern 初始化失败: ${error.message}，服务仍将启动`);
+        }
 
         // 测试 SillyTavern 连接
         const stResult = await sillyTavernClient.testConnection();
@@ -215,9 +219,9 @@ class BridgeService {
      */
     calculateReplyDelay(reply) {
         const replyConfig = configManager.get('reply') || {};
-        const baseDelay = replyConfig.replyDelay || 500;
-        const maxDelay = replyConfig.maxReplyDelay || 3000;
-        const delayPerChar = replyConfig.delayPerChar || 50;
+        const baseDelay = replyConfig.replyDelay ?? 500;
+        const maxDelay = replyConfig.maxReplyDelay ?? 3000;
+        const delayPerChar = replyConfig.delayPerChar ?? 50;
 
         const calculatedDelay = baseDelay + (reply.length * delayPerChar);
         return Math.min(calculatedDelay, maxDelay);
